@@ -28,7 +28,14 @@ function StudentDashboardPage() {
   }, []);
 
   const metrics = useMemo(() => {
-    const completed = results.length;
+    const attemptedExamIds = new Set(
+      results
+        .map((result) => result.examId || result.exam?._id || result.exam)
+        .filter(Boolean)
+        .map(String)
+    );
+
+    const completed = attemptedExamIds.size;
     const average =
       completed > 0
         ? Math.round(
@@ -36,10 +43,13 @@ function StudentDashboardPage() {
           )
         : 0;
 
+    const available = exams.filter((exam) => !attemptedExamIds.has(String(exam._id))).length;
+
     return {
-      upcoming: exams.length,
+      available,
       completed,
       average,
+      attemptedExamIds,
     };
   }, [exams, results]);
 
@@ -54,12 +64,12 @@ function StudentDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <article className="glass-panel p-5">
-          <p className="text-sm text-slate-400">Upcoming</p>
-          <p className="mt-2 text-2xl font-bold">{metrics.upcoming} Exams</p>
+          <p className="text-sm text-slate-400">Available Exams</p>
+          <p className="mt-2 text-2xl font-bold">{metrics.available}</p>
         </article>
         <article className="glass-panel p-5">
-          <p className="text-sm text-slate-400">Completed</p>
-          <p className="mt-2 text-2xl font-bold">{metrics.completed} Exams</p>
+          <p className="text-sm text-slate-400">Attempted Exams</p>
+          <p className="mt-2 text-2xl font-bold">{metrics.completed}</p>
         </article>
         <article className="glass-panel p-5">
           <p className="text-sm text-slate-400">Average Score</p>
@@ -79,12 +89,21 @@ function StudentDashboardPage() {
           {exams.map((exam) => (
             <div key={exam._id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
-                <p className="font-medium">{exam.title}</p>
+                <p className="font-medium">
+                  {exam.title}{" "}
+                  {metrics.attemptedExamIds.has(String(exam._id)) && (
+                    <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200">Already Attempted</span>
+                  )}
+                </p>
                 <p className="text-sm text-slate-400">
                   {new Date(exam.startTime).toLocaleString()} | {exam.durationMinutes} mins
                 </p>
               </div>
-              <Link to={`/take-exam?examId=${exam._id}`} className="primary-btn inline-block">Start</Link>
+              {metrics.attemptedExamIds.has(String(exam._id)) ? (
+                <span className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">Already Attempted</span>
+              ) : (
+                <Link to={`/take-exam?examId=${exam._id}`} className="primary-btn inline-block">Start</Link>
+              )}
             </div>
           ))}
         </div>

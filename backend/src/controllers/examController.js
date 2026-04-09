@@ -106,7 +106,30 @@ const getExams = async (req, res) => {
     exams = await Exam.find(query).sort({ startTime: 1 });
   }
 
-  return res.json(exams);
+  if (req.user.role !== "student") {
+    return res.json(exams);
+  }
+
+  const existingResults = await Result.find({
+    $or: [
+      { studentId: req.user._id },
+      { student: req.user._id },
+    ],
+  }).select("examId exam");
+
+  const attemptedExamIds = new Set(
+    existingResults
+      .map((result) => String(result.examId || result.exam || ""))
+      .filter(Boolean)
+  );
+
+  const examsWithAttemptFlag = exams.map((examDoc) => {
+    const exam = examDoc.toObject();
+    exam.alreadyAttempted = attemptedExamIds.has(String(exam._id));
+    return exam;
+  });
+
+  return res.json(examsWithAttemptFlag);
 };
 
 const getExamById = async (req, res) => {
@@ -209,17 +232,15 @@ const startExam = async (req, res) => {
     return res.status(400).json({ message: "Exam is not active" });
   }
 
-  const existingResult = await Result.findOne({ student: req.user._id, exam: exam._id });
-  if (existingResult && existingResult.submittedAt) {
-    return res.status(400).json({ message: "Exam already submitted" });
-  }
+  const existingResult = await Result.findOne({
+    $or: [
+      { studentId: req.user._id, examId: exam._id },
+      { student: req.user._id, exam: exam._id },
+    ],
+  });
 
-  if (!existingResult) {
-    await Result.create({
-      student: req.user._id,
-      exam: exam._id,
-      startedAt: now,
-    });
+  if (existingResult) {
+    return res.status(409).json({ message: "already attempted" });
   }
 
   return res.json({ message: "Exam session started" });
@@ -245,37 +266,31 @@ const saveAnswers = async (req, res) => {
     return res.status(400).json({ message: "Answers must be an array" });
   }
 
-  const existingResult = await Result.findOne({ student: req.user._id, exam: exam._id });
-  if (existingResult?.submittedAt) {
-    return res.status(400).json({ message: "Exam already submitted" });
+  const existingResult = await Result.findOne({
+    $or: [
+      { studentId: req.user._id, examId: exam._id },
+      { student: req.user._id, exam: exam._id },
+    ],
+  });
+  if (existingResult) {
+    return res.status(409).json({ message: "already attempted" });
   }
-
-  const { normalizedAnswers } = normalizeAnswersAgainstExam(answers, exam.questions);
-
-  const result = await Result.findOneAndUpdate(
-    { student: req.user._id, exam: exam._id },
-    {
-      student: req.user._id,
-      exam: exam._id,
-      answers: normalizedAnswers,
-      startedAt: existingResult?.startedAt || now,
-    },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
 
   return res.json({
     message: "Answers saved",
-    savedAnswerCount: result.answers.length,
-    updatedAt: result.updatedAt,
+    savedAnswerCount: answers.length,
+    updatedAt: now,
   });
 };
 
 const submitExam = async (req, res) => {
-  if (!isValidObjectId(req.params.id)) {
+  const targetExamId = req.params.id || req.body.examId;
+
+  if (!isValidObjectId(targetExamId)) {
     return res.status(400).json({ message: "Invalid examId" });
   }
 
-  const exam = await Exam.findById(req.params.id);
+  const exam = await Exam.findById(targetExamId);
   if (!exam) {
     return res.status(404).json({ message: "Exam not found" });
   }
@@ -290,29 +305,34 @@ const submitExam = async (req, res) => {
     return res.status(400).json({ message: "Answers must be an array" });
   }
 
-  const existingResult = await Result.findOne({ student: req.user._id, exam: exam._id });
-  if (existingResult?.submittedAt) {
-    return res.status(400).json({ message: "Exam already submitted" });
+  const existingResult = await Result.findOne({
+    $or: [
+      { studentId: req.user._id, examId: exam._id },
+      { student: req.user._id, exam: exam._id },
+    ],
+  });
+  if (existingResult) {
+    return res.status(409).json({ message: "already attempted" });
   }
 
+  const totalQuestions = exam.questions.length;
   const maxScore = exam.questions.reduce((acc, q) => acc + (q.points || 1), 0);
   const { normalizedAnswers, score } = normalizeAnswersAgainstExam(answers, exam.questions);
 
   const percentage = maxScore ? Number(((score / maxScore) * 100).toFixed(2)) : 0;
 
-  const result = await Result.findOneAndUpdate(
-    { student: req.user._id, exam: exam._id },
-    {
-      student: req.user._id,
-      exam: exam._id,
-      score,
-      maxScore,
-      percentage,
-      answers: normalizedAnswers,
-      submittedAt: new Date(),
-    },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
+  const result = await Result.create({
+    studentId: req.user._id,
+    examId: exam._id,
+    student: req.user._id,
+    exam: exam._id,
+    score,
+    maxScore,
+    totalQuestions,
+    percentage,
+    answers: normalizedAnswers,
+    submittedAt: new Date(),
+  });
 
   return res.json(result);
 };

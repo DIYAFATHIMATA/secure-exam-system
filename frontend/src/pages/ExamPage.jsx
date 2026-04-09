@@ -99,7 +99,8 @@ function ExamPage() {
           throw new Error("Exam ID missing in URL");
         }
 
-        const response = await api.post(`/exams/${examId}/submit`, {
+        const response = await api.post("/results", {
+          examId,
           answers: buildAnswerPayload(),
         });
 
@@ -164,7 +165,12 @@ function ExamPage() {
         try {
           await api.post(`/exams/${examId}/start`);
         } catch (startError) {
-          // If already started, continue rendering exam; server still allows fetching/submission.
+          if (startError?.response?.status === 409) {
+            await exitFullscreenIfActive();
+            setExam(null);
+            setError("Already Attempted");
+            return;
+          }
         }
 
         setExam(examResponse.data);

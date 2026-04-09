@@ -34,9 +34,9 @@ function ResultPage() {
   const latestFromApi = results[0];
   const displayResult = latestFromApi
     ? {
-        title: latestFromApi.exam?.title || "Exam",
+        title: latestFromApi.examId?.title || latestFromApi.exam?.title || "Exam",
         score: latestFromApi.score,
-        total: latestFromApi.maxScore,
+        total: latestFromApi.totalQuestions || latestFromApi.maxScore,
         percentage: latestFromApi.percentage,
       }
     : latest;

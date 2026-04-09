@@ -2,21 +2,35 @@ const mongoose = require("mongoose");
 
 const resultSchema = new mongoose.Schema(
   {
-    student: {
+    studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    exam: {
+    examId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Exam",
       required: true,
+    },
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+    exam: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Exam",
+      required: false,
     },
     score: {
       type: Number,
       default: 0,
     },
     maxScore: {
+      type: Number,
+      default: 0,
+    },
+    totalQuestions: {
       type: Number,
       default: 0,
     },
@@ -57,5 +71,6 @@ const resultSchema = new mongoose.Schema(
 );
 
 resultSchema.index({ student: 1, exam: 1 }, { unique: true });
+resultSchema.index({ studentId: 1, examId: 1 }, { unique: true });
 
 module.exports = mongoose.model("Result", resultSchema);
