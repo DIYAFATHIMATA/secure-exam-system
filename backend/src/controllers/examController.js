@@ -1,6 +1,8 @@
 const Exam = require("../models/Exam");
 const Result = require("../models/Result");
 
+const isExamWindowEnforced = () => process.env.ENFORCE_EXAM_WINDOW === "true";
+
 const sanitizeExamForStudent = (examDoc) => {
   const exam = examDoc.toObject();
   exam.questions = exam.questions.map((q) => ({
@@ -86,7 +88,11 @@ const getExams = async (req, res) => {
   let query = {};
 
   if (req.user.role === "student") {
-    query = { isPublished: true, startTime: { $lte: now }, endTime: { $gte: now } };
+    query = { isPublished: true };
+    if (isExamWindowEnforced()) {
+      query.startTime = { $lte: now };
+      query.endTime = { $gte: now };
+    }
   }
 
   const exams = await Exam.find(query).sort({ startTime: 1 });
@@ -115,7 +121,7 @@ const startExam = async (req, res) => {
   }
 
   const now = new Date();
-  if (now < exam.startTime || now > exam.endTime) {
+  if (isExamWindowEnforced() && (now < exam.startTime || now > exam.endTime)) {
     return res.status(400).json({ message: "Exam is not active" });
   }
 
@@ -142,7 +148,7 @@ const saveAnswers = async (req, res) => {
   }
 
   const now = new Date();
-  if (now < exam.startTime || now > exam.endTime) {
+  if (isExamWindowEnforced() && (now < exam.startTime || now > exam.endTime)) {
     return res.status(400).json({ message: "Exam is not active" });
   }
 
@@ -183,7 +189,7 @@ const submitExam = async (req, res) => {
   }
 
   const now = new Date();
-  if (now > exam.endTime) {
+  if (isExamWindowEnforced() && now > exam.endTime) {
     return res.status(400).json({ message: "Exam time window has ended" });
   }
 
