@@ -1,6 +1,22 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const normalizeApiBaseUrl = (rawValue) => {
+  const fallback = "http://localhost:5000/api";
+  const input = (rawValue || "").trim();
+
+  if (!input) {
+    return fallback;
+  }
+
+  const withoutTrailingSlash = input.replace(/\/+$/, "");
+  if (withoutTrailingSlash.endsWith("/api")) {
+    return withoutTrailingSlash;
+  }
+
+  return `${withoutTrailingSlash}/api`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
 const safeReadAuth = () => {
   try {
