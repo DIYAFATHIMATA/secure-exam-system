@@ -115,13 +115,22 @@ function ExamPage() {
 
   useEffect(() => {
     const loadExam = async () => {
+      const redirectToFirstAvailableExam = async () => {
+        const examsResponse = await api.get("/exams");
+        const availableExams = examsResponse.data || [];
+
+        if (availableExams.length > 0) {
+          navigate(`/take-exam?examId=${availableExams[0]._id}`, { replace: true });
+          return true;
+        }
+
+        return false;
+      };
+
       if (!examId) {
         try {
-          const examsResponse = await api.get("/exams");
-          const availableExams = examsResponse.data || [];
-
-          if (availableExams.length > 0) {
-            navigate(`/take-exam?examId=${availableExams[0]._id}`, { replace: true });
+          const redirected = await redirectToFirstAvailableExam();
+          if (redirected) {
             return;
           }
 
@@ -141,6 +150,15 @@ function ExamPage() {
         setExam(response.data);
         setTimer((response.data.durationMinutes || 1) * 60);
       } catch (apiError) {
+        try {
+          const redirected = await redirectToFirstAvailableExam();
+          if (redirected) {
+            return;
+          }
+        } catch (fallbackError) {
+          // Ignore fallback errors and show the original exam start error.
+        }
+
         setError(apiError?.response?.data?.message || "Unable to start exam");
       } finally {
         setLoading(false);
