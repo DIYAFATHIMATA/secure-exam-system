@@ -1,5 +1,6 @@
 const Exam = require("../models/Exam");
 const Result = require("../models/Result");
+const { ensureSampleExams } = require("../utils/seedExam");
 
 const isExamWindowEnforced = () => process.env.ENFORCE_EXAM_WINDOW === "true";
 
@@ -95,7 +96,13 @@ const getExams = async (req, res) => {
     }
   }
 
-  const exams = await Exam.find(query).sort({ startTime: 1 });
+  let exams = await Exam.find(query).sort({ startTime: 1 });
+
+  if (req.user.role === "student" && exams.length === 0) {
+    await ensureSampleExams();
+    exams = await Exam.find(query).sort({ startTime: 1 });
+  }
+
   return res.json(exams);
 };
 
@@ -114,9 +121,25 @@ const getExamById = async (req, res) => {
 };
 
 const startExam = async (req, res) => {
-  const exam = await Exam.findById(req.params.id);
+  let exam = await Exam.findById(req.params.id);
 
   if (!exam || !exam.isPublished) {
+    await ensureSampleExams();
+
+    const fallbackExam = await Exam.findOne({
+      isPublished: true,
+      "questions.0": { $exists: true },
+    })
+      .select("_id")
+      .sort({ startTime: 1 });
+
+    if (fallbackExam) {
+      return res.status(404).json({
+        message: "Exam unavailable",
+        fallbackExamId: fallbackExam._id,
+      });
+    }
+
     return res.status(404).json({ message: "Exam unavailable" });
   }
 

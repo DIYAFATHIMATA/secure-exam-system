@@ -150,6 +150,12 @@ function ExamPage() {
         setExam(response.data);
         setTimer((response.data.durationMinutes || 1) * 60);
       } catch (apiError) {
+        const fallbackExamId = apiError?.response?.data?.fallbackExamId;
+        if (fallbackExamId) {
+          navigate(`/take-exam?examId=${fallbackExamId}`, { replace: true });
+          return;
+        }
+
         try {
           const redirected = await redirectToFirstAvailableExam();
           if (redirected) {
