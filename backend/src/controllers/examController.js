@@ -128,14 +128,17 @@ const getExamById = async (req, res) => {
     const sanitizedExam = sanitizeExamForStudent(exam);
     return res.json({
       ...sanitizedExam,
+      questions: sanitizedExam.questions || [],
       message: sanitizedExam.questions.length ? "Exam fetched successfully" : "No questions available",
     });
   }
 
+  const adminExam = exam.toObject();
   return res.json({
-    ...exam.toObject(),
-    questionCount: exam.questions?.length || 0,
-    message: exam.questions?.length ? "Exam fetched successfully" : "No questions available",
+    ...adminExam,
+    questions: adminExam.questions || [],
+    questionCount: adminExam.questions?.length || 0,
+    message: adminExam.questions?.length ? "Exam fetched successfully" : "No questions available",
   });
 };
 

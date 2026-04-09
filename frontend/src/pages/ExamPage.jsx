@@ -221,10 +221,8 @@ function ExamPage() {
 
       try {
         await api.post(`/exams/${examId}/start`);
-        const [examResponse, questionResponse] = await Promise.all([
-          api.get(`/exams/${examId}`),
-          api.get(`/exams/${examId}/questions`),
-        ]);
+        const examResponse = await api.get(`/exams/${examId}`);
+        console.debug("[TakeExam] API response:", examResponse.data);
 
         const fetchedExamId = String(examResponse.data?._id || "");
         if (fetchedExamId && fetchedExamId !== String(examId)) {
@@ -234,7 +232,7 @@ function ExamPage() {
           return;
         }
 
-        if ((questionResponse.data?.totalQuestions || 0) === 0) {
+        if (!Array.isArray(examResponse.data?.questions) || examResponse.data.questions.length === 0) {
           await exitFullscreenIfActive();
           setExam(null);
           setError("No questions available");
@@ -247,6 +245,7 @@ function ExamPage() {
       } catch (apiError) {
         const fallbackExamId = apiError?.response?.data?.fallbackExamId;
         if (fallbackExamId) {
+          await exitFullscreenIfActive();
           navigate(`/take-exam?examId=${fallbackExamId}`, { replace: true });
           return;
         }
