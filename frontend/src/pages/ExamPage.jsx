@@ -116,8 +116,22 @@ function ExamPage() {
   useEffect(() => {
     const loadExam = async () => {
       if (!examId) {
-        setError("No exam selected. Open an exam from dashboard.");
-        setLoading(false);
+        try {
+          const examsResponse = await api.get("/exams");
+          const availableExams = examsResponse.data || [];
+
+          if (availableExams.length > 0) {
+            navigate(`/take-exam?examId=${availableExams[0]._id}`, { replace: true });
+            return;
+          }
+
+          setError("No active exams available right now.");
+        } catch (apiError) {
+          setError(apiError?.response?.data?.message || "Unable to load exams");
+        } finally {
+          setLoading(false);
+        }
+
         return;
       }
 
@@ -134,7 +148,7 @@ function ExamPage() {
     };
 
     loadExam();
-  }, [examId]);
+  }, [examId, navigate]);
 
   const recordViolation = useCallback((reason) => {
     if (hasSubmittedRef.current || submitting) {
