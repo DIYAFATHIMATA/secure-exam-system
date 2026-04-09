@@ -11,6 +11,7 @@ const resultRoutes = require("./routes/resultRoutes");
 const antiCheatRoutes = require("./routes/antiCheatRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const { ensureDefaultAdmin } = require("./utils/seedAdmin");
+const { ensureSampleExam } = require("./utils/seedExam");
 
 dotenv.config();
 
@@ -55,6 +56,10 @@ const startServer = async () => {
     const adminSeed = await ensureDefaultAdmin();
     if (adminSeed.created) {
       console.log(`Default admin created: ${adminSeed.email}`);
+    }
+    const examSeed = await ensureSampleExam();
+    if (examSeed.created) {
+      console.log(`Sample exam created: ${examSeed.title}`);
     }
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
