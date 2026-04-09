@@ -4,6 +4,35 @@ import api from "../api/client";
 
 const MAX_VIOLATIONS = 3;
 
+const getEmergencyExam = () => ({
+  _id: "emergency-exam",
+  title: "Emergency Mock Exam",
+  durationMinutes: 20,
+  questions: [
+    {
+      _id: "em-q1",
+      questionText: "Which keyword declares a constant in JavaScript?",
+      options: ["let", "var", "const", "static"],
+      correctOption: 2,
+      points: 1,
+    },
+    {
+      _id: "em-q2",
+      questionText: "Which protocol is primarily used for secure web traffic?",
+      options: ["HTTP", "FTP", "SMTP", "HTTPS"],
+      correctOption: 3,
+      points: 1,
+    },
+    {
+      _id: "em-q3",
+      questionText: "What is 15% of 200?",
+      options: ["25", "30", "35", "40"],
+      correctOption: 1,
+      points: 1,
+    },
+  ],
+});
+
 function ExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -16,6 +45,7 @@ function ExamPage() {
   const [lastViolation, setLastViolation] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
   const hasSubmittedRef = useRef(false);
   const answersRef = useRef({});
   const violationsRef = useRef(0);
@@ -34,7 +64,7 @@ function ExamPage() {
 
   const trackCheating = useCallback(
     async (eventType, details) => {
-      if (!examId) {
+      if (!examId || isFallbackMode) {
         return;
       }
 
@@ -48,7 +78,7 @@ function ExamPage() {
         // Keep exam flow uninterrupted even if tracking API fails.
       }
     },
-    [examId]
+    [examId, isFallbackMode]
   );
 
   const onSelectOption = (questionId, selectedOption) => {
@@ -60,7 +90,7 @@ function ExamPage() {
   };
 
   const saveAnswers = useCallback(async () => {
-    if (!examId || hasSubmittedRef.current) {
+    if (!examId || isFallbackMode || hasSubmittedRef.current) {
       return;
     }
 
@@ -70,11 +100,11 @@ function ExamPage() {
     }
 
     await api.post(`/exams/${examId}/answers`, { answers: payload });
-  }, [buildAnswerPayload, examId]);
+  }, [buildAnswerPayload, examId, isFallbackMode]);
 
   const onSubmit = useCallback(
     async (autoSubmitted = false, submitReason = "manual") => {
-      if (hasSubmittedRef.current || submitting || !examId) {
+      if (hasSubmittedRef.current || submitting) {
         return;
       }
 
@@ -83,6 +113,36 @@ function ExamPage() {
       setError("");
 
       try {
+        if (isFallbackMode || !examId) {
+          const fallbackScore = (exam?.questions || []).reduce((acc, question) => {
+            if (Number(answersRef.current[question._id]) === Number(question.correctOption)) {
+              return acc + (question.points || 1);
+            }
+            return acc;
+          }, 0);
+
+          const maxScore = (exam?.questions || []).reduce((acc, question) => acc + (question.points || 1), 0);
+          const percentage = maxScore ? Number(((fallbackScore / maxScore) * 100).toFixed(2)) : 0;
+
+          localStorage.setItem(
+            "exam-latest-result",
+            JSON.stringify({
+              examId: "emergency-exam",
+              title: exam?.title || "Emergency Mock Exam",
+              score: fallbackScore,
+              total: maxScore,
+              percentage,
+              autoSubmitted,
+              submitReason,
+              violations: violationsRef.current,
+              submittedAt: new Date().toISOString(),
+            })
+          );
+
+          navigate("/result");
+          return;
+        }
+
         const response = await api.post(`/exams/${examId}/submit`, {
           answers: buildAnswerPayload(),
         });
@@ -110,7 +170,7 @@ function ExamPage() {
         setSubmitting(false);
       }
     },
-    [buildAnswerPayload, exam?.title, examId, navigate, submitting]
+    [buildAnswerPayload, exam, examId, isFallbackMode, navigate, submitting]
   );
 
   useEffect(() => {
@@ -149,6 +209,7 @@ function ExamPage() {
         const response = await api.get(`/exams/${examId}`);
         setExam(response.data);
         setTimer((response.data.durationMinutes || 1) * 60);
+        setIsFallbackMode(false);
       } catch (apiError) {
         const fallbackExamId = apiError?.response?.data?.fallbackExamId;
         if (fallbackExamId) {
@@ -165,7 +226,11 @@ function ExamPage() {
           // Ignore fallback errors and show the original exam start error.
         }
 
-        setError(apiError?.response?.data?.message || "Unable to start exam");
+        const emergencyExam = getEmergencyExam();
+        setExam(emergencyExam);
+        setTimer(emergencyExam.durationMinutes * 60);
+        setIsFallbackMode(true);
+        setError("Live exam unavailable. Emergency exam loaded.");
       } finally {
         setLoading(false);
       }
