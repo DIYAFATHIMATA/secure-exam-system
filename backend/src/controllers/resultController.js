@@ -4,7 +4,9 @@ const { submitExam } = require("./examController");
 const getAllResults = async (req, res) => {
   const results = await Result.find({})
     .populate("studentId", "name email")
+    .populate("student", "name email")
     .populate("examId", "title")
+    .populate("exam", "title")
     .sort({ createdAt: -1 });
 
   return res.json(results);
@@ -25,7 +27,13 @@ const getMyResults = async (req, res) => {
 };
 
 const getExamResults = async (req, res) => {
-  const results = await Result.find({ exam: req.params.examId })
+  const results = await Result.find({
+    $or: [
+      { examId: req.params.examId },
+      { exam: req.params.examId },
+    ],
+  })
+    .populate("studentId", "name email")
     .populate("student", "name email")
     .sort({ score: -1 });
 

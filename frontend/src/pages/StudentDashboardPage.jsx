@@ -27,12 +27,27 @@ function StudentDashboardPage() {
     loadDashboard();
   }, []);
 
+  const getExamIdFromResult = (result) => {
+    if (result?.examId?._id) {
+      return String(result.examId._id);
+    }
+    if (result?.exam?._id) {
+      return String(result.exam._id);
+    }
+    if (result?.examId) {
+      return String(result.examId);
+    }
+    if (result?.exam) {
+      return String(result.exam);
+    }
+    return "";
+  };
+
   const metrics = useMemo(() => {
     const attemptedExamIds = new Set(
       results
-        .map((result) => result.examId || result.exam?._id || result.exam)
+        .map(getExamIdFromResult)
         .filter(Boolean)
-        .map(String)
     );
 
     const completed = attemptedExamIds.size;

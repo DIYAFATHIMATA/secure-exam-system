@@ -154,7 +154,8 @@ function ExamPage() {
           return;
         }
 
-        const questions = examResponse.data?.questions;
+        const questionsResponse = await api.get(`/exams/${examId}/questions`);
+        const questions = questionsResponse.data?.questions;
         if (!Array.isArray(questions) || questions.length === 0) {
           await exitFullscreenIfActive();
           setExam(null);
@@ -173,7 +174,7 @@ function ExamPage() {
           }
         }
 
-        setExam(examResponse.data);
+        setExam({ ...examResponse.data, questions });
         setTimer((examResponse.data.durationMinutes || 1) * 60);
       } catch (apiError) {
         await exitFullscreenIfActive();
@@ -185,7 +186,7 @@ function ExamPage() {
     };
 
     loadExam();
-  }, [examId, exitFullscreenIfActive, navigate]);
+  }, [examId, exitFullscreenIfActive]);
 
   const recordViolation = useCallback((reason) => {
     if (hasSubmittedRef.current || submitting) {
@@ -249,10 +250,14 @@ function ExamPage() {
   }, [exam, saveAnswers, submitting]);
 
   useEffect(() => {
+    if (!exam || loading) {
+      return;
+    }
+
     if (timer === 0 && !submitting && !hasSubmittedRef.current) {
       onSubmit(true, "timer-ended");
     }
-  }, [timer, submitting, onSubmit]);
+  }, [exam, loading, timer, submitting, onSubmit]);
 
   useEffect(() => {
     if (submitting) {
