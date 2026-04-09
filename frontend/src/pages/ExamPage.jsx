@@ -209,9 +209,17 @@ function ExamPage() {
             return;
           }
 
-          setError("No active exams available right now.");
+          const emergencyExam = getEmergencyExam();
+          setExam(emergencyExam);
+          setTimer(emergencyExam.durationMinutes * 60);
+          setIsFallbackMode(true);
+          setError("Live exam unavailable. Emergency exam loaded.");
         } catch (apiError) {
-          setError(apiError?.response?.data?.message || "Unable to load exams");
+          const emergencyExam = getEmergencyExam();
+          setExam(emergencyExam);
+          setTimer(emergencyExam.durationMinutes * 60);
+          setIsFallbackMode(true);
+          setError("Live exam unavailable. Emergency exam loaded.");
         } finally {
           setLoading(false);
         }
@@ -260,9 +268,11 @@ function ExamPage() {
         }
 
         await exitFullscreenIfActive();
-        setExam(null);
-        setIsFallbackMode(false);
-        setError(apiError?.response?.data?.message || "Exam unavailable.");
+        const emergencyExam = getEmergencyExam();
+        setExam(emergencyExam);
+        setTimer(emergencyExam.durationMinutes * 60);
+        setIsFallbackMode(true);
+        setError("Live exam unavailable. Emergency exam loaded.");
       } finally {
         setLoading(false);
       }
