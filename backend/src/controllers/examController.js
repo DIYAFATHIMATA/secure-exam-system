@@ -6,12 +6,13 @@ const isExamWindowEnforced = () => process.env.ENFORCE_EXAM_WINDOW === "true";
 
 const sanitizeExamForStudent = (examDoc) => {
   const exam = examDoc.toObject();
-  exam.questions = exam.questions.map((q) => ({
+  exam.questions = (exam.questions || []).map((q) => ({
     _id: q._id,
     questionText: q.questionText,
     options: q.options,
     points: q.points,
   }));
+  exam.questionCount = exam.questions.length;
   return exam;
 };
 
@@ -114,10 +115,45 @@ const getExamById = async (req, res) => {
   }
 
   if (req.user.role === "student") {
+    if (!exam.isPublished) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
     return res.json(sanitizeExamForStudent(exam));
   }
 
   return res.json(exam);
+};
+
+const getExamQuestions = async (req, res) => {
+  const exam = await Exam.findById(req.params.id);
+
+  if (!exam) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  if (req.user.role === "student" && !exam.isPublished) {
+    return res.status(404).json({ message: "Exam not found" });
+  }
+
+  const sanitizedExam = sanitizeExamForStudent(exam);
+  if (!sanitizedExam.questions.length) {
+    return res.status(200).json({
+      examId: sanitizedExam._id,
+      title: sanitizedExam.title,
+      totalQuestions: 0,
+      questions: [],
+      message: "No questions found for this exam",
+    });
+  }
+
+  return res.status(200).json({
+    examId: sanitizedExam._id,
+    title: sanitizedExam.title,
+    totalQuestions: sanitizedExam.questions.length,
+    questions: sanitizedExam.questions,
+    message: "Questions fetched successfully",
+  });
 };
 
 const startExam = async (req, res) => {
@@ -253,6 +289,7 @@ module.exports = {
   addQuestion,
   getExams,
   getExamById,
+  getExamQuestions,
   startExam,
   saveAnswers,
   submitExam,

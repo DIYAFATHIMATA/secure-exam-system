@@ -4,6 +4,7 @@ const {
   addQuestion,
   getExams,
   getExamById,
+  getExamQuestions,
   startExam,
   saveAnswers,
   submitExam,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.get("/", protect, getExams);
 router.get("/:id", protect, getExamById);
+router.get("/:id/questions", protect, getExamQuestions);
 router.post("/", protect, authorize("admin"), createExam);
 router.post("/:id/questions", protect, authorize("admin"), addQuestion);
 router.post("/:id/start", protect, authorize("student"), startExam);

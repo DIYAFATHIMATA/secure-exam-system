@@ -53,6 +53,17 @@ function ExamPage() {
   const lastViolationRef = useRef({ reason: "", at: 0 });
   const totalQuestions = useMemo(() => exam?.questions?.length || 0, [exam]);
 
+  const exitFullscreenIfActive = useCallback(async () => {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        // Ignore fullscreen exit errors; message handling continues.
+      }
+    }
+    fullscreenActivatedRef.current = false;
+  }, []);
+
   const buildAnswerPayload = useCallback(
     () =>
       Object.entries(answersRef.current).map(([questionId, selectedOption]) => ({
@@ -206,9 +217,20 @@ function ExamPage() {
 
       try {
         await api.post(`/exams/${examId}/start`);
-        const response = await api.get(`/exams/${examId}`);
-        setExam(response.data);
-        setTimer((response.data.durationMinutes || 1) * 60);
+        const [examResponse, questionResponse] = await Promise.all([
+          api.get(`/exams/${examId}`),
+          api.get(`/exams/${examId}/questions`),
+        ]);
+
+        if ((questionResponse.data?.totalQuestions || 0) === 0) {
+          await exitFullscreenIfActive();
+          setExam(null);
+          setError("No questions found for this exam. Please contact admin.");
+          return;
+        }
+
+        setExam(examResponse.data);
+        setTimer((examResponse.data.durationMinutes || 1) * 60);
         setIsFallbackMode(false);
       } catch (apiError) {
         const fallbackExamId = apiError?.response?.data?.fallbackExamId;
@@ -237,7 +259,7 @@ function ExamPage() {
     };
 
     loadExam();
-  }, [examId, navigate]);
+  }, [examId, exitFullscreenIfActive, navigate]);
 
   const recordViolation = useCallback((reason) => {
     if (hasSubmittedRef.current || submitting) {
