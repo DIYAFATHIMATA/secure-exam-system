@@ -311,29 +311,6 @@ function ExamPage() {
       return undefined;
     }
 
-    const tryEnterFullscreen = async () => {
-      if (document.fullscreenElement || fullscreenActivatedRef.current) {
-        return;
-      }
-
-      try {
-        await document.documentElement.requestFullscreen();
-        fullscreenActivatedRef.current = true;
-      } catch (error) {
-        setLastViolation("Fullscreen permission denied. Click Enable Fullscreen.");
-      }
-    };
-
-    tryEnterFullscreen();
-
-    return undefined;
-  }, [submitting]);
-
-  useEffect(() => {
-    if (submitting) {
-      return undefined;
-    }
-
     const onVisibilityChange = () => {
       if (document.hidden) {
         recordViolation("Tab switch detected");
