@@ -1,9 +1,30 @@
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/client";
 
 function SidebarLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [firstExamId, setFirstExamId] = useState("");
+
+  useEffect(() => {
+    const loadFirstExam = async () => {
+      if (user?.role !== "student") {
+        return;
+      }
+
+      try {
+        const response = await api.get("/exams");
+        const exams = response.data || [];
+        setFirstExamId(exams[0]?._id || "");
+      } catch (error) {
+        setFirstExamId("");
+      }
+    };
+
+    loadFirstExam();
+  }, [user?.role]);
 
   const navItems = [
     {
@@ -13,7 +34,7 @@ function SidebarLayout() {
     },
     {
       label: "Take Exam",
-      to: "/take-exam",
+      to: firstExamId ? `/take-exam?examId=${firstExamId}` : "/take-exam",
       visible: user?.role === "student",
     },
     {
