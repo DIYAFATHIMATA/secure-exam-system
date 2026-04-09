@@ -52,6 +52,7 @@ function ExamPage() {
   const fullscreenActivatedRef = useRef(false);
   const lastViolationRef = useRef({ reason: "", at: 0 });
   const totalQuestions = useMemo(() => exam?.questions?.length || 0, [exam]);
+  const examIdDebugText = examId || "missing";
 
   const exitFullscreenIfActive = useCallback(async () => {
     if (document.fullscreenElement) {
@@ -186,6 +187,9 @@ function ExamPage() {
 
   useEffect(() => {
     const loadExam = async () => {
+      // Debug signal to quickly verify which examId reached the Take Exam page.
+      console.debug("[TakeExam] examId:", examId || "missing");
+
       const redirectToFirstAvailableExam = async () => {
         const examsResponse = await api.get("/exams");
         const availableExams = examsResponse.data || [];
@@ -225,7 +229,7 @@ function ExamPage() {
         if ((questionResponse.data?.totalQuestions || 0) === 0) {
           await exitFullscreenIfActive();
           setExam(null);
-          setError("No questions found for this exam. Please contact admin.");
+          setError("No questions available");
           return;
         }
 
@@ -248,11 +252,10 @@ function ExamPage() {
           // Ignore fallback errors and show the original exam start error.
         }
 
-        const emergencyExam = getEmergencyExam();
-        setExam(emergencyExam);
-        setTimer(emergencyExam.durationMinutes * 60);
-        setIsFallbackMode(true);
-        setError("Live exam unavailable. Emergency exam loaded.");
+        await exitFullscreenIfActive();
+        setExam(null);
+        setIsFallbackMode(false);
+        setError(apiError?.response?.data?.message || "Exam unavailable.");
       } finally {
         setLoading(false);
       }
@@ -418,6 +421,7 @@ function ExamPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Take Exam</p>
         <h1 className="mt-2 text-2xl font-bold">{exam.title}</h1>
         <p className="mt-2 text-slate-300">Attempt all questions before submitting.</p>
+        <p className="mt-2 text-xs text-slate-400">examId: {examIdDebugText}</p>
       </article>
 
       {error && <p className="rounded-lg bg-rose-500/20 p-3 text-sm text-rose-200">{error}</p>}

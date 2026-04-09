@@ -119,10 +119,18 @@ const getExamById = async (req, res) => {
       return res.status(404).json({ message: "Exam not found" });
     }
 
-    return res.json(sanitizeExamForStudent(exam));
+    const sanitizedExam = sanitizeExamForStudent(exam);
+    return res.json({
+      ...sanitizedExam,
+      message: sanitizedExam.questions.length ? "Exam fetched successfully" : "No questions available",
+    });
   }
 
-  return res.json(exam);
+  return res.json({
+    ...exam.toObject(),
+    questionCount: exam.questions?.length || 0,
+    message: exam.questions?.length ? "Exam fetched successfully" : "No questions available",
+  });
 };
 
 const getExamQuestions = async (req, res) => {
@@ -143,7 +151,7 @@ const getExamQuestions = async (req, res) => {
       title: sanitizedExam.title,
       totalQuestions: 0,
       questions: [],
-      message: "No questions found for this exam",
+      message: "No questions available",
     });
   }
 
