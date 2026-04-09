@@ -226,6 +226,14 @@ function ExamPage() {
           api.get(`/exams/${examId}/questions`),
         ]);
 
+        const fetchedExamId = String(examResponse.data?._id || "");
+        if (fetchedExamId && fetchedExamId !== String(examId)) {
+          await exitFullscreenIfActive();
+          setExam(null);
+          setError("Exam link mismatch. Please open exam from dashboard.");
+          return;
+        }
+
         if ((questionResponse.data?.totalQuestions || 0) === 0) {
           await exitFullscreenIfActive();
           setExam(null);

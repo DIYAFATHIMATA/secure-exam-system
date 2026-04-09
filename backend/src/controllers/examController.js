@@ -1,8 +1,10 @@
 const Exam = require("../models/Exam");
 const Result = require("../models/Result");
 const { ensureSampleExams } = require("../utils/seedExam");
+const mongoose = require("mongoose");
 
 const isExamWindowEnforced = () => process.env.ENFORCE_EXAM_WINDOW === "true";
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const sanitizeExamForStudent = (examDoc) => {
   const exam = examDoc.toObject();
@@ -108,6 +110,10 @@ const getExams = async (req, res) => {
 };
 
 const getExamById = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid examId" });
+  }
+
   const exam = await Exam.findById(req.params.id);
 
   if (!exam) {
@@ -134,6 +140,10 @@ const getExamById = async (req, res) => {
 };
 
 const getExamQuestions = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid examId" });
+  }
+
   const exam = await Exam.findById(req.params.id);
 
   if (!exam) {
@@ -165,6 +175,10 @@ const getExamQuestions = async (req, res) => {
 };
 
 const startExam = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid examId" });
+  }
+
   let exam = await Exam.findById(req.params.id);
 
   if (!exam || !exam.isPublished) {
@@ -209,6 +223,10 @@ const startExam = async (req, res) => {
 };
 
 const saveAnswers = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid examId" });
+  }
+
   const exam = await Exam.findById(req.params.id);
   if (!exam || !exam.isPublished) {
     return res.status(404).json({ message: "Exam unavailable" });
@@ -250,6 +268,10 @@ const saveAnswers = async (req, res) => {
 };
 
 const submitExam = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid examId" });
+  }
+
   const exam = await Exam.findById(req.params.id);
   if (!exam) {
     return res.status(404).json({ message: "Exam not found" });
