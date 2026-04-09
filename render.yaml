@@ -24,3 +24,17 @@ services:
         value: admin@exam.com
       - key: ADMIN_PASSWORD
         sync: false
+
+  - type: static
+    name: secure-exam-system-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://secure-exam-system-0qja.onrender.com/api
