@@ -31,6 +31,10 @@ app.use(
   })
 );
 
+app.get("/", (req, res) => {
+  res.send("API running");
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
